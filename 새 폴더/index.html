@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neurofeedback Breathing Training</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #1a2a6c, #b21f1f, #fdbb2d); /* 명상적 분위기 */
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); /* 차분한 딥 블루 */
+            color: white;
+            font-family: 'Malgun Gothic', sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 {
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+        }
+
+        .status-text {
+            font-size: 1.5rem;
+            min-height: 40px;
+            margin-bottom: 40px;
+            font-weight: bold;
+            color: #81d4fa;
+        }
+
+        /* 호흡 서클 애니메이션 */
+        .breathing-circle {
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(129, 212, 250, 0.4) 0%, rgba(129, 212, 250, 0.1) 70%);
+            border-radius: 50%;
+            margin: 0 auto;
+            position: relative;
+            box-shadow: 0 0 50px rgba(129, 212, 250, 0.2);
+            transition: transform 0.1s linear; /* JS로 제어 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 내부 코어 */
+        .core {
+            width: 150px;
+            height: 150px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+        }
+
+        .control-btn {
+            margin-top: 50px;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+
+        /* 뇌 산소포화도 게이지 (가상) */
+        .brain-gauge-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 400px;
+        }
+        
+        .gauge-label { font-size: 0.9rem; margin-bottom: 5px; color: #ccc; }
+        
+        .gauge-bar-bg {
+            width: 100%;
+            height: 10px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .gauge-bar-fill {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #00c6ff, #0072ff);
+            transition: width 1s linear;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Neuro Feedback Training</h1>
+    <div id="instruction" class="status-text">준비되셨으면 시작 버튼을 누르세요</div>
+
+    <div class="breathing-circle" id="circle">
+        <div class="core"></div>
+    </div>
+
+    <button class="control-btn" id="startBtn" onclick="startTraining()">훈련 시작</button>
+
+    <div class="brain-gauge-container">
+        <div class="gauge-label">뇌 산소 공급량 (Brain Oxygen Level)</div>
+        <div class="gauge-bar-bg">
+            <div class="gauge-bar-fill" id="oxygenBar"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const instructionEl = document.getElementById('instruction');
+    const circleEl = document.getElementById('circle');
+    const btnEl = document.getElementById('startBtn');
+    const oxygenBar = document.getElementById('oxygenBar');
+    
+    let isRunning = false;
+    let audioCtx = null;
+    let oscillators = [];
+    let gainNodes = [];
+    let oxygenLevel = 0;
+
+    // TTS (음성 합성) 설정
+    function speak(text) {
+        if ('speechSynthesis' in window) {
+            // 기존 발화 취소
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 0.8; // 천천히 차분하게
+            utterance.pitch = 0.9; // 약간 낮게
+            utterance.volume = 0.8;
+            window.speechSynthesis.speak(utterance);
+        }
+    }
+
+    // 힐링 사운드 생성 (Web Audio API) - 신디사이저 패드 사운드
+    function playAmbientMusic() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        
+        // 화음 구성 (C Major Pad: C3, E3, G3 + 옥타브)
+        // 주파수: 130.81(C3), 164.81(E3), 196.00(G3)
+        const freqs = [130.81, 164.81, 196.00, 261.63]; 
+        
+        freqs.forEach(freq => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine'; // 부드러운 사인파
+            osc.frequency.value = freq;
+            
+            // 볼륨을 아주 작게 시작해서 페이드인
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.03, audioCtx.currentTime + 2); // 최대 볼륨 0.03 (은은하게)
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            
+            oscillators.push(osc);
+            gainNodes.push(gain);
+        });
+    }
+
+    function stopAmbientMusic() {
+        if (audioCtx) {
+            gainNodes.forEach(gain => {
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1); // 1초 페이드아웃
+            });
+            setTimeout(() => {
+                oscillators.forEach(osc => osc.stop());
+                oscillators = [];
+                gainNodes = [];
+                audioCtx.close();
+                audioCtx = null;
+            }, 1000);
+        }
+    }
+
+    // 호흡 루틴 실행
+    function startTraining() {
+        if (isRunning) return;
+        isRunning = true;
+        btnEl.style.display = 'none'; // 버튼 숨김
+
+        playAmbientMusic();
+        instructionEl.innerText = "눈을 편안하게 뜨고 원을 바라보세요.";
+        speak("편안하게, 몸과 마음을 이완합니다. 호흡 훈련을 시작합니다.");
+
+        // 3초 후 호흡 시작
+        setTimeout(() => {
+            breathCycle();
+        }, 3000);
+    }
+
+    function breathCycle() {
+        if (!isRunning) return;
+
+        // 1. 들이마시기 (4초)
+        setPhase("코로 깊게 들이마시세요", "inhale", 4000);
+        
+        // 2. 멈추기 (4초)
+        setTimeout(() => {
+            setPhase("숨을 잠시 멈춥니다", "hold", 4000);
+        }, 4000);
+
+        // 3. 내쉬기 (6초) - 이완의 핵심
+        setTimeout(() => {
+            setPhase("입으로 천천히 내쉬세요", "exhale", 6000);
+            updateOxygen(); // 게이지 증가
+        }, 8000);
+
+        // 4. 반복 (총 14초 주기)
+        setTimeout(() => {
+            breathCycle();
+        }, 14000);
+    }
+
+    function setPhase(text, type, duration) {
+        instructionEl.innerText = text;
+        speak(text);
+
+        // 애니메이션 처리
+        if (type === 'inhale') {
+            circleEl.style.transition = `transform ${duration}ms ease-in-out`;
+            circleEl.style.transform = 'scale(1.5)'; // 원 커짐
+            circleEl.style.background = 'radial-gradient(circle, rgba(167, 255, 235, 0.5) 0%, rgba(167, 255, 235, 0.2) 70%)'; // 밝은 녹색빛
+        } else if (type === 'hold') {
+            circleEl.style.transition = `transform ${duration}ms linear`;
+            // 크기 유지
+        } else if (type === 'exhale') {
+            circleEl.style.transition = `transform ${duration}ms ease-in-out`;
+            circleEl.style.transform = 'scale(1.0)'; // 원 작아짐
+            circleEl.style.background = 'radial-gradient(circle, rgba(129, 212, 250, 0.4) 0%, rgba(129, 212, 250, 0.1) 70%)'; // 원래 파란빛
+        }
+    }
+
+    function updateOxygen() {
+        if(oxygenLevel < 100) {
+            oxygenLevel += 5; // 한 사이클당 5% 충전
+            oxygenBar.style.width = oxygenLevel + '%';
+        }
+    }
+
+</script>
+
+</body>
+</html>
