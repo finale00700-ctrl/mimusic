@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Piano Scale Trainer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg:       #0e0f13;
+  --surface:  #161820;
+  --surface2: #1d1f2a;
+  --border:   rgba(255,255,255,0.07);
+  --accent:   #d4a853;
+  --accent2:  #e8c87a;
+  --white:    #f0f0ee;
+  --muted:    #666880;
+  --green:    #5ec98a;
+  --red:      #e06060;
+  --r:        16px;
+  --safe-b:   env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  overscroll-behavior: none;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── HEADER ── */
+.header {
+  padding: 18px 20px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+
+.header-badge {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  color: var(--white);
+}
+
+/* ── PAGE SYSTEM ── */
+.page { display: flex; flex-direction: column; flex: 1; }
+.page.hidden { display: none; }
+
+/* ── SECTIONS ── */
+.section {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-label {
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+/* ── TAB ROW ── */
+.tab-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tab {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #111;
+}
+
+/* ── SCALE GRID ── */
+.scale-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 7px;
+  margin-bottom: 14px;
+}
+
+.scale-btn {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.scale-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #111;
+  font-weight: 700;
+  box-shadow: 0 0 14px rgba(212,168,83,0.35);
+}
+
+.scale-btn:active { transform: scale(0.93); }
+
+/* ── SCALE NAME ROW ── */
+.scale-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.scale-full-name {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  color: var(--accent2);
+}
+
+.key-sig-badge {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 99px;
+  background: rgba(212,168,83,0.12);
+  border: 1px solid rgba(212,168,83,0.25);
+  color: var(--accent);
+}
+
+/* ── NOTE NAMES ── */
+.note-names {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.note-pill {
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  transition: all 0.2s;
+}
+
+.note-pill.tonic {
+  background: rgba(212,168,83,0.18);
+  border-color: rgba(212,168,83,0.4);
+  color: var(--accent2);
+  font-weight: 600;
+}
+
+/* ── KEYBOARD ── */
+.kb-section { padding-bottom: 20px; }
+
+.kb-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+}
+
+canvas {
+  display: block;
+  border-radius: 10px;
+}
+
+/* ── PAGE NAV ── */
+.page-nav {
+  padding: 14px 18px calc(14px + var(--safe-b));
+  margin-top: auto;
+}
+
+.btn-page-next {
+  width: 100%;
+  padding: 15px;
+  border-radius: 14px;
+  border: none;
+  background: var(--accent);
+  color: #111;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 4px 20px rgba(212,168,83,0.25);
+}
+
+.btn-page-next:active { transform: scale(0.97); }
+
+/* ── PAGE 2 ── */
+.page2-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.btn-back-page {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.page2-scale {
+  font-family: 'DM Serif Display', serif;
+  font-size: 17px;
+  color: var(--accent2);
+}
+
+/* ── METRO CONTROLS ── */
+.metro-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.ts-group {
+  display: flex;
+  gap: 6px;
+}
+
+.ts-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ts-btn.active {
+  background: var(--surface2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.bpm-group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.bpm-btn {
+  width: 42px;
+  height: 46px;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 22px;
+  font-weight: 300;
+  cursor: pointer;
+  transition: background 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bpm-btn:active { background: rgba(255,255,255,0.06); }
+
+.bpm-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 4px 8px;
+}
+
+.bpm-num {
+  font-family: 'DM Serif Display', serif;
+  font-size: 24px;
+  color: var(--white);
+  line-height: 1;
+}
+
+.bpm-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ── BEAT LIGHTS ── */
+.beat-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.beat-lights {
+  display: flex;
+  gap: 8px;
+}
+
+.beat-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  transition: background 0.08s, box-shadow 0.08s;
+}
+
+.beat-dot.on {
+  background: var(--accent);
+  box-shadow: 0 0 10px rgba(212,168,83,0.6);
+}
+
+.beat-dot.accent-on {
+  background: var(--accent2);
+  box-shadow: 0 0 14px rgba(232,200,122,0.7);
+  transform: scale(1.2);
+}
+
+.tempo-name {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── NOTE INDICATOR ── */
+.note-ind-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.note-ind-row.hidden { display: none; }
+
+.note-ind-label { font-size: 11px; color: var(--muted); }
+
+.note-ind {
+  font-family: 'DM Serif Display', serif;
+  font-size: 22px;
+  color: var(--accent2);
+  min-width: 30px;
+}
+
+.scale-dir { font-size: 18px; color: var(--accent); }
+
+/* ── METRO ACTION BUTTONS ── */
+.metro-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-demo, .btn-metro {
+  flex: 1;
+  padding: 13px;
+  border-radius: 12px;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-demo {
+  background: var(--surface2);
+  color: var(--white);
+  border: 1px solid var(--border);
+}
+
+.btn-metro {
+  background: var(--accent);
+  color: #111;
+  box-shadow: 0 4px 14px rgba(212,168,83,0.25);
+}
+
+.btn-metro.running {
+  background: var(--red);
+  box-shadow: 0 4px 14px rgba(224,96,96,0.3);
+  color: white;
+}
+
+.btn-demo:active, .btn-metro:active { transform: scale(0.96); }
+
+/* ── REP SECTION ── */
+.rep-section { flex: 1; padding-bottom: calc(20px + var(--safe-b)); }
+
+.rep-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.btn-reset {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.rep-cat { margin-bottom: 18px; }
+
+.rep-cat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.rep-cat-symbol {
+  font-size: 18px;
+  color: var(--accent);
+  min-width: 28px;
+}
+
+.rep-cat-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+  flex: 1;
+}
+
+.rep-cat-progress {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.rep-checks {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rep-cb {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-user-select: none;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.rep-cb.checked {
+  background: rgba(94,201,138,0.15);
+  border-color: var(--green);
+  color: var(--green);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.rep-cb:active { transform: scale(0.88); }
+
+.rep-cat.cat-done .rep-cat-title { color: var(--green); }
+.rep-cat.cat-done .rep-cat-symbol { color: var(--green); }
+
+.rep-done {
+  text-align: center;
+  padding: 20px;
+  font-size: 18px;
+  font-family: 'DM Serif Display', serif;
+  background: rgba(94,201,138,0.08);
+  border: 1px solid rgba(94,201,138,0.3);
+  border-radius: 14px;
+  cursor: pointer;
+  color: var(--green);
+  margin-top: 8px;
+}
+
+.rep-done::after {
+  content: '\A결과 보기 →';
+  white-space: pre;
+  display: block;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.rep-done.hidden { display: none; }
+
+/* ── PAGE 3 (완료) ── */
+.page3-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 20px calc(32px + var(--safe-b));
+  gap: 0;
+}
+
+.page3-emoji {
+  font-size: 64px;
+  margin-bottom: 16px;
+  animation: p3float 2.5s ease-in-out infinite;
+}
+
+@keyframes p3float {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+.page3-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  color: var(--accent2);
+  margin-bottom: 6px;
+}
+
+.page3-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 28px;
+}
+
+.page3-date {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+}
+
+.completed-scales {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.completed-scale-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border-radius: 14px;
+  border: 1px solid rgba(94,201,138,0.2);
+}
+
+.completed-scale-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(94,201,138,0.2);
+  border: 1.5px solid var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--green);
+  flex-shrink: 0;
+}
+
+.completed-scale-name {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--white);
+  flex: 1;
+}
+
+.completed-scale-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.completed-tag {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(212,168,83,0.1);
+  border: 1px solid rgba(212,168,83,0.2);
+  color: var(--accent);
+}
+
+.page3-empty {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+
+.btn-page3-back {
+  width: 100%;
+  padding: 15px;
+  border-radius: 14px;
+  border: none;
+  background: var(--accent);
+  color: #111;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: 0 4px 20px rgba(212,168,83,0.25);
+  margin-top: auto;
+}
+
+.btn-page3-back:active { transform: scale(0.97); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">RCM · PRE-BAND</div>
+    <h1>Scale Trainer</h1>
+  </div>
+
+  <!-- PAGE 1 -->
+  <div id="page-1" class="page">
+
+    <section class="section">
+      <div class="section-label">스케일 선택</div>
+      <div class="tab-row">
+        <button class="tab active" data-cat="major">장조</button>
+        <button class="tab"        data-cat="minor">단조</button>
+      </div>
+      <div class="scale-grid" id="scale-grid"></div>
+      <div class="scale-name-row">
+        <span class="scale-full-name" id="scale-full-name">C Major</span>
+      </div>
+      <div class="note-names" id="note-names"></div>
+    </section>
+
+    <section class="section kb-section">
+      <div class="section-label">건반 다이어그램</div>
+      <div class="kb-wrap">
+        <canvas id="kb-cv"></canvas>
+      </div>
+    </section>
+
+    <div class="page-nav">
+      <button class="btn-page-next" id="btn-next-page">메트로놈 연습 ›</button>
+    </div>
+  </div>
+
+  <!-- PAGE 2 -->
+  <div id="page-2" class="page hidden">
+
+    <div class="page2-bar">
+      <button class="btn-back-page" id="btn-prev-page">‹ 스케일 선택</button>
+      <span class="page2-scale" id="page2-scale">C Major</span>
+    </div>
+
+    <section class="section">
+      <div class="section-label">메트로놈</div>
+
+      <div class="metro-top">
+        <div class="ts-group">
+          <button class="ts-btn active" data-ts="4">4/4</button>
+          <button class="ts-btn"        data-ts="3">3/4</button>
+          <button class="ts-btn"        data-ts="2">2/4</button>
+        </div>
+        <div class="bpm-group">
+          <button class="bpm-btn" id="bpm-down">−</button>
+          <div class="bpm-display">
+            <span class="bpm-num" id="bpm-num">72</span>
+            <span class="bpm-label">BPM</span>
+          </div>
+          <button class="bpm-btn" id="bpm-up">＋</button>
+        </div>
+      </div>
+
+      <div class="beat-row">
+        <div class="beat-lights" id="beat-lights"></div>
+        <span class="tempo-name" id="tempo-name">Andante</span>
+      </div>
+
+      <div class="note-ind-row hidden" id="note-ind-row">
+        <span class="note-ind-label">현재 음</span>
+        <span class="note-ind" id="note-ind">C</span>
+        <span class="scale-dir" id="scale-dir">↑</span>
+      </div>
+
+      <div class="metro-controls">
+        <button class="btn-demo" id="btn-demo">♪ 시범</button>
+        <button class="btn-metro" id="btn-metro">▶ 시작</button>
+      </div>
+    </section>
+
+    <section class="section rep-section">
+      <div class="rep-header">
+        <span class="section-label">연습 횟수</span>
+        <button class="btn-reset" id="btn-reset">↺ 초기화</button>
+      </div>
+      <div id="rep-cats"></div>
+      <div class="rep-done hidden" id="rep-done">🎉 완료! 훌륭해요!</div>
+    </section>
+  </div>
+
+  <!-- PAGE 3 (완료 기록) -->
+  <div id="page-3" class="page hidden">
+    <div class="header" style="border-bottom:1px solid var(--border);">
+      <div class="header-badge">오늘의 연습</div>
+      <h1>완료 기록</h1>
+    </div>
+    <div class="page3-wrap">
+      <div class="page3-emoji">🎹</div>
+      <div class="page3-title">수고했어요!</div>
+      <div class="page3-sub">연습 완료한 스케일 목록이에요</div>
+      <div class="page3-date" id="page3-date"></div>
+      <div class="completed-scales" id="completed-scales"></div>
+      <button class="btn-page3-back" id="btn-page3-back">← 계속 연습하기</button>
+    </div>
+  </div>
+
+</div>
+<script>
+// ═══════════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════════
+const SCALES = {
+  major: [
+    { id:'C',  name:'C Major',      notes:['C','D','E','F','G','A','B'],              keySig:'없음' },
+    { id:'G',  name:'G Major',      notes:['G','A','B','C','D','E','F♯'],             keySig:'♯ 1개' },
+    { id:'D',  name:'D Major',      notes:['D','E','F♯','G','A','B','C♯'],            keySig:'♯ 2개' },
+    { id:'A',  name:'A Major',      notes:['A','B','C♯','D','E','F♯','G♯'],           keySig:'♯ 3개' },
+    { id:'E',  name:'E Major',      notes:['E','F♯','G♯','A','B','C♯','D♯'],          keySig:'♯ 4개' },
+    { id:'B',  name:'B Major',      notes:['B','C♯','D♯','E','F♯','G♯','A♯'],         keySig:'♯ 5개' },
+    { id:'F♯', name:'F♯ Major',     notes:['F♯','G♯','A♯','B','C♯','D♯','E♯'],        keySig:'♯ 6개' },
+    { id:'F',  name:'F Major',      notes:['F','G','A','B♭','C','D','E'],             keySig:'♭ 1개' },
+    { id:'B♭', name:'B♭ Major',     notes:['B♭','C','D','E♭','F','G','A'],            keySig:'♭ 2개' },
+    { id:'E♭', name:'E♭ Major',     notes:['E♭','F','G','A♭','B♭','C','D'],           keySig:'♭ 3개' },
+    { id:'A♭', name:'A♭ Major',     notes:['A♭','B♭','C','D♭','E♭','F','G'],          keySig:'♭ 4개' },
+    { id:'D♭', name:'D♭ Major',     notes:['D♭','E♭','F','G♭','A♭','B♭','C'],         keySig:'♭ 5개' },
+  ],
+  minor: [
+    { id:'Am', name:'A Minor',      notes:['A','B','C','D','E','F','G'],              keySig:'없음' },
+    { id:'Em', name:'E Minor',      notes:['E','F♯','G','A','B','C','D'],             keySig:'♯ 1개' },
+    { id:'Bm', name:'B Minor',      notes:['B','C♯','D','E','F♯','G','A'],            keySig:'♯ 2개' },
+    { id:'F♯m',name:'F♯ Minor',     notes:['F♯','G♯','A','B','C♯','D','E'],           keySig:'♯ 3개' },
+    { id:'C♯m',name:'C♯ Minor',     notes:['C♯','D♯','E','F♯','G♯','A','B'],          keySig:'♯ 4개' },
+    { id:'G♯m',name:'G♯ Minor',     notes:['G♯','A♯','B','C♯','D♯','E','F♯'],         keySig:'♯ 5개' },
+    { id:'Dm', name:'D Minor',      notes:['D','E','F','G','A','B♭','C'],             keySig:'♭ 1개' },
+    { id:'Gm', name:'G Minor',      notes:['G','A','B♭','C','D','E♭','F'],            keySig:'♭ 2개' },
+    { id:'Cm', name:'C Minor',      notes:['C','D','E♭','F','G','A♭','B♭'],           keySig:'♭ 3개' },
+    { id:'Fm', name:'F Minor',      notes:['F','G','A♭','B♭','C','D♭','E♭'],          keySig:'♭ 4개' },
+    { id:'B♭m',name:'B♭ Minor',     notes:['B♭','C','D♭','E♭','F','G♭','A♭'],         keySig:'♭ 5개' },
+    { id:'E♭m',name:'E♭ Minor',     notes:['E♭','F','G♭','A♭','B♭','C♭','D♭'],        keySig:'♭ 6개' },
+  ]
+};
+
+const REP_CATS = [
+  { title: '4분음표', symbol: '♩',  prefix: 'q' },
+  { title: '8분음표', symbol: '♪',  prefix: 'e' },
+  { title: '3잇단음표', symbol: '♪³', prefix: 't' },
+  { title: '16분음표', symbol: '♬', prefix: 's' },
+].map(cat => ({
+  ...cat,
+  items: Array.from({ length: 5 }, (_, i) => ({
+    id: `${cat.prefix}-${i+1}`, name: `${i+1}회`, target: 1
+  }))
+}));
+
+const TEMPO_NAMES = [
+  [0,   'Larghissimo'],
+  [24,  'Largo'],
+  [40,  'Larghetto'],
+  [60,  'Adagio'],
+  [66,  'Andante'],
+  [76,  'Andantino'],
+  [108, 'Moderato'],
+  [120, 'Allegretto'],
+  [132, 'Allegro'],
+  [168, 'Presto'],
+  [200, 'Prestissimo'],
+];
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let currentCat = 'major';
+let currentScaleId = 'C';
+let bpm = 72;
+let timeSig = 4;
+let metroRunning = false;
+let metroInterval = null;
+let beatIndex = 0;
+let repState = {}; // { scaleId+itemId: count }
+let completedScales = []; // [{ id, name, cat, time }]
+let noteIndex = 0;
+let noteDir = 1;
+
+// AudioContext for metronome clicks
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playClick(isAccent) {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type = 'triangle';
+  osc.frequency.value = isAccent ? 1100 : 800;
+  gain.gain.setValueAtTime(isAccent ? 0.5 : 0.3, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.08);
+}
+
+// ═══════════════════════════════════════════════
+//  SCALE GRID
+// ═══════════════════════════════════════════════
+function buildScaleGrid() {
+  const grid = document.getElementById('scale-grid');
+  grid.innerHTML = '';
+  SCALES[currentCat].forEach(sc => {
+    const btn = document.createElement('button');
+    btn.className = 'scale-btn' + (sc.id === currentScaleId ? ' active' : '');
+    btn.textContent = sc.id;
+    btn.onclick = () => selectScale(sc.id);
+    grid.appendChild(btn);
+  });
+}
+
+function selectScale(id) {
+  currentScaleId = id;
+  buildScaleGrid();
+  updateScaleInfo();
+  drawKeyboard();
+  buildRepList();
+}
+
+function currentScale() {
+  return SCALES[currentCat].find(s => s.id === currentScaleId) || SCALES[currentCat][0];
+}
+
+function updateScaleInfo() {
+  const sc = currentScale();
+  document.getElementById('scale-full-name').textContent = sc.name;
+  document.getElementById('page2-scale').textContent = sc.name;
+
+  const nn = document.getElementById('note-names');
+  nn.innerHTML = '';
+  sc.notes.forEach((n, i) => {
+    const pill = document.createElement('span');
+    pill.className = 'note-pill' + (i === 0 || i === sc.notes.length - 1 || i === 7 ? ' tonic' : '');
+    if (i === 0) pill.classList.add('tonic');
+    pill.textContent = n;
+    nn.appendChild(pill);
+  });
+  // add octave tonic
+  const tonic2 = document.createElement('span');
+  tonic2.className = 'note-pill tonic';
+  tonic2.textContent = sc.notes[0];
+  nn.appendChild(tonic2);
+}
+
+// ═══════════════════════════════════════════════
+//  PIANO KEY SOUND
+// ═══════════════════════════════════════════════
+const NOTE_FREQS = {
+  'C':261.63,'C♯':277.18,'D♭':277.18,'D':293.66,'D♯':311.13,'E♭':311.13,
+  'E':329.63,'E♯':349.23,'F':349.23,'F♯':369.99,'G♭':369.99,'G':392.00,
+  'G♯':415.30,'A♭':415.30,'A':440.00,'A♯':466.16,'B♭':466.16,'B':493.88,
+  'B♯':523.25,'C♭':493.88,'F♭':329.63
+};
+
+function playPianoNote(freq, octaveShift) {
+  const ctx = getAudioCtx();
+  const f = freq * Math.pow(2, octaveShift || 0);
+  // Stack a few harmonics for a piano-ish timbre
+  const harmonics = [[1, 0.5], [2, 0.25], [3, 0.12], [4, 0.06]];
+  harmonics.forEach(([ratio, amp]) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'triangle';
+    osc.frequency.value = f * ratio;
+    gain.gain.setValueAtTime(amp, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 1.2);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  KEYBOARD CANVAS
+// ═══════════════════════════════════════════════
+const NOTE_TO_SEMITONE = {
+  'C':0,'C♯':1,'D♭':1,'D':2,'D♯':3,'E♭':3,'E':4,'F':5,
+  'F♯':6,'G♭':6,'G':7,'G♯':8,'A♭':8,'A':9,'A♯':10,'B♭':10,'B':11,
+  'E♯':5,'B♯':0,'C♭':11,'F♭':4,'A♯':10
+};
+
+const BLACK_SEMITONES = new Set([1,3,6,8,10]);
+const WHITE_ORDER = [0,2,4,5,7,9,11];
+const BLACK_POSITIONS = [0,1,3,4,5];
+const BLACK_SEM_IDX   = [1,3,6,8,10];
+
+// 5-note color palette (index 0–4 = tonic to 5th)
+const NOTE_COLORS_WHITE = ['#e8c87a','#7ecfff','#a8f0b8','#ffb87e','#d4a0ff'];
+const NOTE_COLORS_BLACK = ['#c8a030','#2a8fc8','#3aaa6a','#d07020','#9050d0'];
+
+const WKW = 40, WKH = 110, BKW = 26, BKH = 66;
+const TOTAL_WHITE = 14;
+
+// Store key hit areas for touch interaction
+let keyHitAreas = []; // { x, y, w, h, freq, octShift, isBlack }
+
+function drawKeyboard() {
+  const sc = currentScale();
+  const canvas = document.getElementById('kb-cv');
+  const WW = WKW * TOTAL_WHITE + 2;
+  const WH = WKH + 14; // +14 for legend
+
+  canvas.width = WW;
+  canvas.height = WH;
+  canvas.style.width = WW + 'px';
+  canvas.style.height = WH + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, WW, WH);
+
+  // Build semitone → color map for first 5 scale notes
+  const colorMap = {}; // semitone → { white, black }
+  sc.notes.slice(0, 5).forEach((note, idx) => {
+    const sem = NOTE_TO_SEMITONE[note];
+    colorMap[sem] = { white: NOTE_COLORS_WHITE[idx], black: NOTE_COLORS_BLACK[idx] };
+  });
+
+  keyHitAreas = [];
+
+  // ── White keys ──
+  for (let i = 0; i < TOTAL_WHITE; i++) {
+    const octOff = Math.floor(i / 7);
+    const posInOct = i % 7;
+    const semitone = (octOff * 12) + WHITE_ORDER[posInOct];
+    const sem12 = semitone % 12;
+    const x = i * WKW + 1;
+
+    const col = colorMap[sem12];
+    ctx.fillStyle = col ? col.white : '#f5f5f0';
+    ctx.strokeStyle = '#bbb';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(x, 2, WKW - 2, WKH - 4, [0, 0, 6, 6]);
+    ctx.fill();
+    ctx.stroke();
+
+    // C label
+    if (posInOct === 0) {
+      ctx.fillStyle = col ? '#7a5000' : '#888';
+      ctx.font = '10px DM Sans, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('C' + (4 + octOff), x + WKW/2 - 1, WKH - 6);
+    }
+
+    // Store hit area
+    const noteName = ['C','D','E','F','G','A','B'][posInOct];
+    const freq = NOTE_FREQS[noteName] || 261.63;
+    keyHitAreas.push({ x, y: 2, w: WKW - 2, h: WKH - 4, freq, octShift: octOff, isBlack: false, sem12 });
+  }
+
+  // ── Black keys ──
+  for (let oct = 0; oct < 2; oct++) {
+    BLACK_POSITIONS.forEach((pos, bIdx) => {
+      const whiteIndex = oct * 7 + pos;
+      const sem12 = BLACK_SEM_IDX[bIdx];
+      const semitone = oct * 12 + sem12;
+      const x = (whiteIndex + 1) * WKW - BKW / 2;
+
+      const col = colorMap[sem12];
+      ctx.fillStyle = col ? col.black : '#222';
+      ctx.strokeStyle = col ? 'rgba(255,255,255,0.25)' : 'transparent';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x, 2, BKW, BKH, [0, 0, 5, 5]);
+      ctx.fill();
+      ctx.stroke();
+
+      // Approximate black key note name for freq lookup
+      const blackNoteNames = ['C♯','D♯','F♯','G♯','A♯'];
+      const noteName = blackNoteNames[bIdx];
+      const freq = NOTE_FREQS[noteName] || 277;
+      keyHitAreas.push({ x, y: 2, w: BKW, h: BKH, freq, octShift: oct, isBlack: true, sem12 });
+    });
+  }
+
+  // ── Legend ──
+  const ly = WKH + 4;
+  sc.notes.slice(0, 5).forEach((note, idx) => {
+    const lx = 4 + idx * 56;
+    ctx.fillStyle = NOTE_COLORS_WHITE[idx];
+    ctx.beginPath();
+    ctx.roundRect(lx, ly, 10, 8, 2);
+    ctx.fill();
+    ctx.fillStyle = '#aaa';
+    ctx.font = '9px DM Sans, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(note, lx + 13, ly + 8);
+  });
+}
+
+function isScaleNote(semitone, notes) {
+  return notes.some(n => NOTE_TO_SEMITONE[n] === semitone);
+}
+
+// ── Touch / click on keyboard ──
+function setupKeyboardTouch() {
+  const canvas = document.getElementById('kb-cv');
+
+  function hitTest(cx, cy) {
+    // Check black keys first (they're on top)
+    for (const k of keyHitAreas) {
+      if (k.isBlack && cx >= k.x && cx <= k.x + k.w && cy >= k.y && cy <= k.y + k.h) {
+        return k;
+      }
+    }
+    for (const k of keyHitAreas) {
+      if (!k.isBlack && cx >= k.x && cx <= k.x + k.w && cy >= k.y && cy <= k.y + k.h) {
+        return k;
+      }
+    }
+    return null;
+  }
+
+  function handleTouch(e) {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const touches = e.changedTouches || [e];
+    Array.from(touches).forEach(t => {
+      const cx = (t.clientX - rect.left) * scaleX;
+      const cy = (t.clientY - rect.top) * scaleY;
+      const key = hitTest(cx, cy);
+      if (key) playPianoNote(key.freq, key.octShift);
+    });
+  }
+
+  canvas.addEventListener('touchstart', handleTouch, { passive: false });
+  canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const cx = (e.clientX - rect.left) * scaleX;
+    const cy = (e.clientY - rect.top) * scaleY;
+    const key = hitTest(cx, cy);
+    if (key) playPianoNote(key.freq, key.octShift);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  METRONOME
+// ═══════════════════════════════════════════════
+function buildBeatLights() {
+  const lights = document.getElementById('beat-lights');
+  lights.innerHTML = '';
+  for (let i = 0; i < timeSig; i++) {
+    const d = document.createElement('div');
+    d.className = 'beat-dot';
+    lights.appendChild(d);
+  }
+}
+
+function updateBeatLight(idx) {
+  const dots = document.querySelectorAll('.beat-dot');
+  dots.forEach((d,i) => {
+    d.classList.remove('on','accent-on');
+    if (i === idx) d.classList.add(idx === 0 ? 'accent-on' : 'on');
+  });
+}
+
+function getTempoName(b) {
+  let name = TEMPO_NAMES[0][1];
+  for (const [thresh, nm] of TEMPO_NAMES) {
+    if (b >= thresh) name = nm;
+  }
+  return name;
+}
+
+function updateBpm() {
+  document.getElementById('bpm-num').textContent = bpm;
+  document.getElementById('tempo-name').textContent = getTempoName(bpm);
+  if (metroRunning) { stopMetro(); startMetro(); }
+}
+
+function startMetro() {
+  metroRunning = true;
+  beatIndex = 0;
+  noteIndex = 0;
+  noteDir = 1;
+  document.getElementById('btn-metro').textContent = '■ 정지';
+  document.getElementById('btn-metro').classList.add('running');
+  document.getElementById('note-ind-row').classList.remove('hidden');
+
+  tick();
+  metroInterval = setInterval(tick, (60 / bpm) * 1000);
+}
+
+function stopMetro() {
+  metroRunning = false;
+  clearInterval(metroInterval);
+  metroInterval = null;
+  document.getElementById('btn-metro').textContent = '▶ 시작';
+  document.getElementById('btn-metro').classList.remove('running');
+  document.getElementById('note-ind-row').classList.add('hidden');
+  document.querySelectorAll('.beat-dot').forEach(d => d.classList.remove('on','accent-on'));
+}
+
+function tick() {
+  const isAccent = beatIndex === 0;
+  playClick(isAccent);
+  updateBeatLight(beatIndex);
+  beatIndex = (beatIndex + 1) % timeSig;
+
+  // advance through scale notes
+  const sc = currentScale();
+  const allNotes = [...sc.notes, sc.notes[0]]; // include octave
+  document.getElementById('note-ind').textContent = allNotes[noteIndex];
+  document.getElementById('scale-dir').textContent = noteDir === 1 ? '↑' : '↓';
+
+  if (isAccent) {
+    noteIndex += noteDir;
+    if (noteIndex >= allNotes.length) { noteIndex = allNotes.length - 2; noteDir = -1; }
+    if (noteIndex < 0) { noteIndex = 1; noteDir = 1; }
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  DEMO (play scale with Web Audio)
+// ═══════════════════════════════════════════════
+
+function playDemo() {
+  const sc = currentScale();
+  const notes = [...sc.notes, sc.notes[0]];
+  const ctx = getAudioCtx();
+  const secPerBeat = 60 / bpm;
+
+  notes.forEach((note, i) => {
+    const freq = NOTE_FREQS[note] || 440;
+    const startTime = ctx.currentTime + i * secPerBeat;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = 'sine';
+    osc.frequency.value = i >= sc.notes.length ? freq * 2 : freq;
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(0.35, startTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + secPerBeat * 0.85);
+
+    osc.start(startTime);
+    osc.stop(startTime + secPerBeat);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  REP LIST
+// ═══════════════════════════════════════════════
+function repKey(itemId) { return currentScaleId + '_' + currentCat + '_' + itemId; }
+
+function buildRepList() {
+  const container = document.getElementById('rep-cats');
+  container.innerHTML = '';
+
+  let totalItems = 0;
+  let totalDone  = 0;
+
+  REP_CATS.forEach(cat => {
+    const checkedCount = cat.items.filter(item => repState[repKey(item.id)]).length;
+    const catDone = checkedCount === cat.items.length;
+    totalItems += cat.items.length;
+    totalDone  += checkedCount;
+
+    const catEl = document.createElement('div');
+    catEl.className = 'rep-cat' + (catDone ? ' cat-done' : '');
+
+    // Header row
+    const header = document.createElement('div');
+    header.className = 'rep-cat-header';
+    header.innerHTML = `
+      <span class="rep-cat-symbol">${cat.symbol}</span>
+      <span class="rep-cat-title">${cat.title}</span>
+      <span class="rep-cat-progress">${checkedCount}/${cat.items.length}</span>
+    `;
+    catEl.appendChild(header);
+
+    // Checkbox row
+    const checks = document.createElement('div');
+    checks.className = 'rep-checks';
+
+    cat.items.forEach((item, idx) => {
+      const key = repKey(item.id);
+      const checked = !!repState[key];
+
+      const cb = document.createElement('div');
+      cb.className = 'rep-cb' + (checked ? ' checked' : '');
+      cb.textContent = checked ? '✓' : String(idx + 1);
+
+      cb.addEventListener('click', () => {
+        // Only check the next unchecked one in order (no unchecking)
+        const nextUnchecked = cat.items.findIndex(it => !repState[repKey(it.id)]);
+        if (nextUnchecked === idx) {
+          repState[key] = 1;
+          buildRepList();
+        }
+      });
+
+      checks.appendChild(cb);
+    });
+
+    catEl.appendChild(checks);
+    container.appendChild(catEl);
+  });
+
+  const doneBanner = document.getElementById('rep-done');
+  if (totalDone === totalItems && totalItems > 0) {
+    doneBanner.classList.remove('hidden');
+    // 완료 기록 추가 (중복 방지)
+    const sc = currentScale();
+    const alreadyLogged = completedScales.some(
+      c => c.id === sc.id && c.cat === currentCat
+    );
+    if (!alreadyLogged) {
+      completedScales.push({
+        id: sc.id,
+        name: sc.name,
+        cat: currentCat,
+        time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      });
+    }
+  } else {
+    doneBanner.classList.add('hidden');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  EVENT WIRING
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentCat = btn.dataset.cat;
+    // pick first scale of new cat
+    currentScaleId = SCALES[currentCat][0].id;
+    buildScaleGrid();
+    updateScaleInfo();
+    drawKeyboard();
+    buildRepList();
+  });
+});
+
+document.querySelectorAll('.ts-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ts-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    timeSig = parseInt(btn.dataset.ts);
+    buildBeatLights();
+    if (metroRunning) { stopMetro(); startMetro(); }
+  });
+});
+
+document.getElementById('bpm-up').addEventListener('click', () => {
+  bpm = Math.min(bpm + 4, 240); updateBpm();
+});
+document.getElementById('bpm-down').addEventListener('click', () => {
+  bpm = Math.max(bpm - 4, 30); updateBpm();
+});
+
+document.getElementById('btn-metro').addEventListener('click', () => {
+  if (metroRunning) stopMetro(); else startMetro();
+});
+
+document.getElementById('btn-demo').addEventListener('click', playDemo);
+
+document.getElementById('btn-next-page').addEventListener('click', () => {
+  document.getElementById('page-1').classList.add('hidden');
+  document.getElementById('page-2').classList.remove('hidden');
+  buildRepList();
+});
+
+document.getElementById('btn-prev-page').addEventListener('click', () => {
+  if (metroRunning) stopMetro();
+  document.getElementById('page-2').classList.add('hidden');
+  document.getElementById('page-1').classList.remove('hidden');
+});
+
+document.getElementById('btn-reset').addEventListener('click', () => {
+  REP_CATS.forEach(cat => cat.items.forEach(item => {
+    delete repState[repKey(item.id)];
+  }));
+  buildRepList();
+});
+
+document.getElementById('btn-page3-back').addEventListener('click', () => {
+  document.getElementById('page-3').classList.add('hidden');
+  document.getElementById('page-1').classList.remove('hidden');
+});
+
+// ── rep-done 클릭 → page 3 ──
+document.getElementById('rep-done').addEventListener('click', () => {
+  if (metroRunning) stopMetro();
+  buildCompletedList();
+  document.getElementById('page-2').classList.add('hidden');
+  document.getElementById('page-3').classList.remove('hidden');
+});
+
+function buildCompletedList() {
+  // 날짜/시간
+  const now = new Date();
+  document.getElementById('page3-date').textContent =
+    now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+
+  const wrap = document.getElementById('completed-scales');
+  wrap.innerHTML = '';
+
+  if (completedScales.length === 0) {
+    wrap.innerHTML = '<div class="page3-empty">아직 완료한 스케일이 없어요</div>';
+    return;
+  }
+
+  completedScales.forEach(sc => {
+    const row = document.createElement('div');
+    row.className = 'completed-scale-row';
+    row.innerHTML = `
+      <div class="completed-scale-check">✓</div>
+      <div class="completed-scale-name">${sc.name}</div>
+      <div class="completed-scale-tags">
+        <span class="completed-tag">♩♪♪³♬</span>
+        <span class="completed-tag">${sc.time}</span>
+      </div>
+    `;
+    wrap.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+buildScaleGrid();
+updateScaleInfo();
+buildBeatLights();
+setTimeout(() => { drawKeyboard(); setupKeyboardTouch(); }, 50);
+</script>
+</body>
+</html>
