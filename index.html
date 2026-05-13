@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>음악 집중력 훈련</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400&family=Gowun+Batang:wght@400;700&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --deep: #0b0617;
+    --mid: #180d2e;
+    --surface: #221540;
+    --purple-glow: #9b6dff;
+    --purple-light: #c8a6ff;
+    --purple-dim: #6d4fbf;
+    --gold: #f0c060;
+    --text-primary: #ede0ff;
+    --text-secondary: #9a85c0;
+    --text-dim: #5a4a7a;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--deep);
+    color: var(--text-primary);
+    font-family: 'Noto Serif KR', serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ─── 배경 캔버스 ─── */
+  #bgCanvas {
+    position: fixed;
+    inset: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ─── 메인 레이아웃 ─── */
+  .shell {
+    position: relative;
+    z-index: 1;
+    width: 100%; height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 24px 28px;
+  }
+
+  /* ─── 헤더 ─── */
+  .header {
+    text-align: center;
+    animation: fadeDown 1s ease both;
+  }
+  .header-title {
+    font-family: 'Gowun Batang', serif;
+    font-size: clamp(18px, 4vw, 26px);
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    color: var(--text-primary);
+    text-shadow: 0 0 28px rgba(155,109,255,0.5);
+    margin-bottom: 8px;
+  }
+  .header-sub {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    font-family: 'DM Mono', monospace;
+    font-weight: 300;
+  }
+
+  /* ─── 파동 영역 ─── */
+  .wave-zone {
+    position: relative;
+    width: min(280px, 70vw);
+    height: min(280px, 70vw);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    animation: fadeIn 1.2s ease 0.2s both;
+  }
+
+  #waveCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+  }
+
+  .clef-wrap {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .clef-symbol {
+    font-size: clamp(36px, 8vw, 52px);
+    color: var(--purple-light);
+    text-shadow: 0 0 24px rgba(155,109,255,0.7), 0 0 48px rgba(155,109,255,0.3);
+    transition: transform 0.3s ease;
+    line-height: 1;
+  }
+  .running .clef-symbol {
+    animation: clefPulse 2.4s ease-in-out infinite;
+  }
+  @keyframes clefPulse {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.08); filter: brightness(1.3); }
+  }
+
+  /* ─── 타이머 ─── */
+  .timer-block {
+    text-align: center;
+    animation: fadeUp 1s ease 0.3s both;
+  }
+  .timer-num {
+    font-family: 'DM Mono', monospace;
+    font-size: clamp(52px, 14vw, 76px);
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    color: var(--text-primary);
+    text-shadow: 0 0 30px rgba(155,109,255,0.4);
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+  .progress-track {
+    width: 240px;
+    height: 2px;
+    background: rgba(155,109,255,0.15);
+    border-radius: 1px;
+    margin: 0 auto 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--purple-dim), var(--purple-glow), var(--purple-light));
+    border-radius: 1px;
+    transition: width 0.5s linear;
+    position: relative;
+  }
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: 0; top: -3px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--purple-light);
+    box-shadow: 0 0 8px var(--purple-glow);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .running .progress-fill::after { opacity: 1; }
+
+  .phase-label {
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    min-height: 16px;
+    transition: color 0.8s;
+  }
+  .running .phase-label { color: var(--text-secondary); }
+
+  /* ─── 하단 컨트롤 ─── */
+  .controls {
+    width: 100%;
+    max-width: 340px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    animation: fadeUp 1s ease 0.4s both;
+  }
+
+  .time-row {
+    display: flex;
+    gap: 10px;
+  }
+  .time-btn {
+    padding: 8px 22px;
+    border-radius: 24px;
+    border: 1px solid rgba(155,109,255,0.25);
+    background: rgba(155,109,255,0.06);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-family: 'Noto Serif KR', serif;
+    cursor: pointer;
+    transition: all 0.22s;
+    letter-spacing: 0.05em;
+  }
+  .time-btn:hover {
+    border-color: rgba(155,109,255,0.55);
+    color: var(--text-primary);
+    background: rgba(155,109,255,0.14);
+  }
+  .time-btn.active {
+    border-color: var(--purple-glow);
+    background: rgba(155,109,255,0.22);
+    color: var(--purple-light);
+    box-shadow: 0 0 12px rgba(155,109,255,0.2);
+  }
+
+  .start-btn {
+    position: relative;
+    width: 200px;
+    padding: 15px 0;
+    border-radius: 40px;
+    border: 1.5px solid rgba(155,109,255,0.4);
+    background: rgba(155,109,255,0.1);
+    color: var(--text-primary);
+    font-family: 'Gowun Batang', serif;
+    font-size: 17px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.28s;
+    overflow: hidden;
+  }
+  .start-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(155,109,255,0.18) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .start-btn:hover::before { opacity: 1; }
+  .start-btn:hover {
+    border-color: var(--purple-glow);
+    box-shadow: 0 0 24px rgba(155,109,255,0.25), inset 0 0 12px rgba(155,109,255,0.08);
+    transform: translateY(-1px);
+  }
+  .start-btn:active { transform: scale(0.97) translateY(0); }
+  .start-btn.stop {
+    border-color: rgba(220,140,160,0.45);
+    color: #ffccdd;
+  }
+  .start-btn.stop::before {
+    background: radial-gradient(ellipse at center, rgba(220,120,140,0.12) 0%, transparent 70%);
+  }
+  .start-btn.stop:hover { border-color: rgba(220,140,160,0.7); box-shadow: 0 0 20px rgba(200,80,100,0.18); }
+
+  /* ─── 완료 오버레이 ─── */
+  .complete-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(11,6,23,0.94);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.7s ease;
+    padding: 24px;
+    text-align: center;
+  }
+  .complete-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .complete-clef {
+    font-size: 64px;
+    color: var(--purple-light);
+    text-shadow: 0 0 36px rgba(155,109,255,0.7);
+    animation: clefPulse 2.5s ease-in-out infinite;
+  }
+  .complete-title {
+    font-family: 'Gowun Batang', serif;
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text-primary);
+    letter-spacing: 0.12em;
+  }
+  .complete-body {
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--text-secondary);
+    letter-spacing: 0.04em;
+  }
+  .complete-body em {
+    color: var(--purple-light);
+    font-style: normal;
+  }
+  .retry-btn {
+    margin-top: 10px;
+    padding: 12px 36px;
+    border-radius: 30px;
+    border: 1px solid rgba(155,109,255,0.4);
+    background: rgba(155,109,255,0.1);
+    color: var(--text-primary);
+    font-family: 'Noto Serif KR', serif;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+  .retry-btn:hover {
+    border-color: var(--purple-glow);
+    background: rgba(155,109,255,0.22);
+    box-shadow: 0 0 16px rgba(155,109,255,0.2);
+  }
+
+  /* ─── 뇌파 정보 칩 ─── */
+  .wave-info {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .wave-chip {
+    padding: 4px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(155,109,255,0.2);
+    background: rgba(155,109,255,0.06);
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+    transition: all 0.5s;
+  }
+  .wave-chip.active-chip {
+    border-color: rgba(155,109,255,0.6);
+    background: rgba(155,109,255,0.18);
+    color: var(--purple-light);
+  }
+
+  /* ─── 키프레임 ─── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="shell" id="shell">
+  <!-- 헤더 -->
+  <div class="header">
+    <div class="header-title">음악 집중력 훈련</div>
+    <div class="header-sub">🎧 이어폰을 끼고 피아노 소리에 귀 기울여보세요</div>
+  </div>
+
+  <!-- 파동 -->
+  <div class="wave-zone">
+    <canvas id="waveCanvas"></canvas>
+    <div class="clef-wrap">
+      <div class="clef-symbol">𝄞</div>
+    </div>
+  </div>
+
+  <!-- 타이머 -->
+  <div class="timer-block">
+    <div class="timer-num" id="timerNum">03:00</div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="phase-label" id="phaseLabel">알파파 뇌파 동조 준비</div>
+  </div>
+
+  <!-- 컨트롤 -->
+  <div class="controls">
+    <div class="wave-info">
+      <div class="wave-chip" id="chipTheta">세타파 4–8Hz</div>
+      <div class="wave-chip" id="chipAlpha">알파파 8–12Hz</div>
+      <div class="wave-chip" id="chipBinaural">바이노럴 비트</div>
+    </div>
+    <div class="time-row">
+      <button class="time-btn active" data-min="3">3분</button>
+      <button class="time-btn" data-min="5">5분</button>
+      <button class="time-btn" data-min="10">10분</button>
+    </div>
+    <button class="start-btn" id="startBtn">훈련 시작</button>
+  </div>
+</div>
+
+<!-- 완료 오버레이 -->
+<div class="complete-overlay" id="completeOverlay">
+  <div class="complete-clef">𝄞</div>
+  <div class="complete-title">훌륭해요!</div>
+  <div class="complete-body">
+    오늘의 집중력 훈련을 완료했어요.<br>
+    <em>알파파</em>가 충분히 활성화되어<br>
+    뇌파가 차분하게 정돈되었습니다.
+  </div>
+  <button class="retry-btn" id="retryBtn">다시 시작하기</button>
+</div>
+
+<script>
+(function () {
+  /* ── 별 배경 ── */
+  const bgCanvas = document.getElementById('bgCanvas');
+  const bgCtx = bgCanvas.getContext('2d');
+  const stars = [];
+  function resizeBg() {
+    bgCanvas.width = window.innerWidth;
+    bgCanvas.height = window.innerHeight;
+  }
+  resizeBg();
+  window.addEventListener('resize', resizeBg);
+
+  for (let i = 0; i < 80; i++) {
+    stars.push({
+      x: Math.random(),
+      y: Math.random(),
+      r: Math.random() * 1.2 + 0.2,
+      a: Math.random() * 0.45 + 0.1,
+      speed: Math.random() * 0.006 + 0.002
+    });
+  }
+
+  /* ── 파동 캔버스 ── */
+  const waveCanvas = document.getElementById('waveCanvas');
+  const wCtx = waveCanvas.getContext('2d');
+  let waveAmp = 0, targetAmp = 0;
+
+  function resizeWave() {
+    const zone = waveCanvas.parentElement;
+    const s = Math.min(zone.offsetWidth, zone.offsetHeight);
+    waveCanvas.width = s;
+    waveCanvas.height = s;
+  }
+  resizeWave();
+  window.addEventListener('resize', resizeWave);
+
+  /* ── 상태 ── */
+  const shell = document.getElementById('shell');
+  const timerNum = document.getElementById('timerNum');
+  const progressFill = document.getElementById('progressFill');
+  const phaseLabel = document.getElementById('phaseLabel');
+  const startBtn = document.getElementById('startBtn');
+  const completeOverlay = document.getElementById('completeOverlay');
+  const retryBtn = document.getElementById('retryBtn');
+  const chipTheta = document.getElementById('chipTheta');
+  const chipAlpha = document.getElementById('chipAlpha');
+  const chipBinaural = document.getElementById('chipBinaural');
+
+  let selMin = 3, totalSec = 180, remaining = 180;
+  let running = false, tickId = null;
+  let audioCtx = null, masterGain = null;
+  let binNodes = [];
+  let noteTimers = [];
+
+  /* ── 포맷 ── */
+  function fmt(s) {
+    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  /* ── 뇌파 칩 상태 ── */
+  function setChips(theta, alpha, binaural) {
+    chipTheta.classList.toggle('active-chip', theta);
+    chipAlpha.classList.toggle('active-chip', alpha);
+    chipBinaural.classList.toggle('active-chip', binaural);
+  }
+
+  /* ── 오디오 ── */
+  const pentatonic = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+
+  function initAudio() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = audioCtx.createGain();
+    masterGain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(0.55, audioCtx.currentTime + 2.5);
+    masterGain.connect(audioCtx.destination);
+  }
+
+  function startBinaural(beatHz) {
+    if (!audioCtx) return;
+    const carrier = 200;
+    const left = audioCtx.createOscillator();
+    const right = audioCtx.createOscillator();
+    const lg = audioCtx.createGain();
+    const rg = audioCtx.createGain();
+    const merger = audioCtx.createChannelMerger(2);
+    left.frequency.value = carrier;
+    right.frequency.value = carrier + beatHz;
+    left.type = right.type = 'sine';
+    lg.gain.value = rg.gain.value = 0.12;
+    left.connect(lg); right.connect(rg);
+    lg.connect(merger, 0, 0); rg.connect(merger, 0, 1);
+    merger.connect(masterGain);
+    left.start(); right.start();
+    binNodes = [left, right, lg, rg, merger];
+  }
+
+  function playNote(freq, t, dur) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const env = audioCtx.createGain();
+    osc.type = 'sine'; osc.frequency.value = freq;
+    env.gain.setValueAtTime(0, t);
+    env.gain.linearRampToValueAtTime(0.16, t + 0.1);
+    env.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(env); env.connect(masterGain);
+    osc.start(t); osc.stop(t + dur + 0.08);
+  }
+
+  const melody = [0, 2, 4, 6, 4, 2, 1, 3, 5, 7, 5, 3];
+  const noteGap = 2.4;
+
+  function scheduleMelody() {
+    if (!audioCtx || !running) return;
+    const now = audioCtx.currentTime;
+    melody.forEach((idx, i) => {
+      const t = now + i * noteGap;
+      playNote(pentatonic[idx], t, 2.0);
+      if (idx < pentatonic.length - 2) playNote(pentatonic[idx + 2] * 0.5, t + 0.12, 1.8);
+    });
+    const dur = melody.length * noteGap * 1000 - 400;
+    const tid = setTimeout(scheduleMelody, dur);
+    noteTimers.push(tid);
+    targetAmp = 1;
+  }
+
+  function stopAudio() {
+    noteTimers.forEach(clearTimeout); noteTimers = [];
+    binNodes.forEach(n => { try { n.stop && n.stop(); n.disconnect && n.disconnect(); } catch (e) {} });
+    binNodes = [];
+    if (masterGain) {
+      masterGain.gain.setValueAtTime(masterGain.gain.value, audioCtx.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+    }
+    targetAmp = 0;
+  }
+
+  /* ── 타이머 tick ── */
+  function tick() {
+    if (remaining <= 0) { finish(); return; }
+    remaining--;
+    timerNum.textContent = fmt(remaining);
+    progressFill.style.width = ((totalSec - remaining) / totalSec * 100) + '%';
+    const elapsed = totalSec - remaining;
+    if (elapsed < 45) {
+      phaseLabel.textContent = '세타파 활성화 단계 · 긴장 해소 중';
+      setChips(true, false, true);
+    } else if (elapsed < totalSec * 0.55) {
+      phaseLabel.textContent = '알파-세타 전환 단계 · 이완된 각성 상태';
+      setChips(true, true, true);
+    } else {
+      phaseLabel.textContent = '깊은 알파파 단계 · 집중력 최적화';
+      setChips(false, true, true);
+    }
+  }
+
+  function finish() {
+    clearInterval(tickId); tickId = null;
+    running = false;
+    shell.classList.remove('running');
+    startBtn.textContent = '훈련 시작';
+    startBtn.classList.remove('stop');
+    stopAudio();
+    completeOverlay.classList.add('show');
+    setChips(false, false, false);
+    phaseLabel.textContent = '알파파 뇌파 동조 준비';
+    remaining = totalSec;
+    timerNum.textContent = fmt(remaining);
+    progressFill.style.width = '0%';
+  }
+
+  /* ── 버튼 이벤트 ── */
+  document.querySelectorAll('.time-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (running) return;
+      document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selMin = parseInt(btn.dataset.min);
+      totalSec = selMin * 60;
+      remaining = totalSec;
+      timerNum.textContent = fmt(remaining);
+      progressFill.style.width = '0%';
+    });
+  });
+
+  startBtn.addEventListener('click', () => {
+    if (!running) {
+      running = true;
+      initAudio();
+      startBinaural(8);
+      scheduleMelody();
+      shell.classList.add('running');
+      startBtn.textContent = '중단';
+      startBtn.classList.add('stop');
+      phaseLabel.textContent = '세타파 활성화 단계 · 긴장 해소 중';
+      setChips(true, false, true);
+      tickId = setInterval(tick, 1000);
+    } else {
+      running = false;
+      clearInterval(tickId); tickId = null;
+      stopAudio();
+      shell.classList.remove('running');
+      startBtn.textContent = '훈련 시작';
+      startBtn.classList.remove('stop');
+      remaining = totalSec;
+      timerNum.textContent = fmt(remaining);
+      progressFill.style.width = '0%';
+      phaseLabel.textContent = '알파파 뇌파 동조 준비';
+      setChips(false, false, false);
+    }
+  });
+
+  retryBtn.addEventListener('click', () => {
+    completeOverlay.classList.remove('show');
+  });
+
+  /* ── 애니메이션 루프 ── */
+  function loop(ts) {
+    const t = ts / 1000;
+
+    /* 별 */
+    bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+    stars.forEach(s => {
+      const a = s.a * (0.6 + 0.4 * Math.sin(t * s.speed * 5 + s.x * 10));
+      bgCtx.beginPath();
+      bgCtx.arc(s.x * bgCanvas.width, s.y * bgCanvas.height, s.r, 0, Math.PI * 2);
+      bgCtx.fillStyle = `rgba(200,175,255,${a})`;
+      bgCtx.fill();
+    });
+
+    /* 파동 */
+    waveAmp += (targetAmp - waveAmp) * 0.035;
+    const W = waveCanvas.width, H = waveCanvas.height;
+    const cx = W / 2, cy = H / 2;
+    wCtx.clearRect(0, 0, W, H);
+
+    if (waveAmp > 0.01) {
+      /* 퍼지는 링 */
+      for (let i = 0; i < 6; i++) {
+        const phase = ((t * 0.35 + i * 0.65) % (6 * 0.65)) / (6 * 0.65);
+        const r = phase * (W * 0.48);
+        const alpha = (1 - phase) * waveAmp * 0.5;
+        if (alpha < 0.005) continue;
+        wCtx.beginPath();
+        wCtx.arc(cx, cy, r, 0, Math.PI * 2);
+        wCtx.strokeStyle = `rgba(155,109,255,${alpha})`;
+        wCtx.lineWidth = 1.5 + (1 - phase) * 2;
+        wCtx.stroke();
+      }
+      /* 중심 글로우 */
+      const gR = W * 0.16 + waveAmp * W * 0.04 * (0.85 + 0.15 * Math.sin(t * 2.8));
+      const g = wCtx.createRadialGradient(cx, cy, 0, cx, cy, gR);
+      g.addColorStop(0, `rgba(155,109,255,${0.22 * waveAmp})`);
+      g.addColorStop(1, 'rgba(155,109,255,0)');
+      wCtx.beginPath();
+      wCtx.arc(cx, cy, gR, 0, Math.PI * 2);
+      wCtx.fillStyle = g;
+      wCtx.fill();
+    }
+
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
